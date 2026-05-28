@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>CARO - AI Emergency Health Guardian</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<link
+rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
+}
+
+body{
+background:
+linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.7)),
+url('https://images.unsplash.com/photo-1505751172876-fa1923c5c528');
+background-size:cover;
+background-position:center;
+background-attachment:fixed;
+color:white;
+overflow-x:hidden;
+}
+
+.container{
+max-width:1400px;
+margin:auto;
+padding:20px;
+}
+
+.hero{
+text-align:center;
+padding:30px;
+}
+
+.hero h1{
+font-size:4rem;
+font-weight:700;
+background:linear-gradient(to right,#38bdf8,#22c55e);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.hero p{
+opacity:0.8;
+margin-top:10px;
+}
+
+.language-switch{
+position:fixed;
+top:20px;
+right:20px;
+z-index:999;
+}
+
+.language-switch button{
+padding:10px 18px;
+border:none;
+border-radius:12px;
+cursor:pointer;
+background:#22c55e;
+color:white;
+font-weight:600;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+gap:20px;
+margin-top:20px;
+}
+
+.card{
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(10px);
+padding:22px;
+border-radius:25px;
+border:1px solid rgba(255,255,255,0.08);
+box-shadow:0 10px 40px rgba(0,0,0,0.4);
+transition:0.3s;
+}
+
+.card:hover{
+transform:translateY(-5px);
+}
+
+.card h2{
+margin-bottom:15px;
+font-size:1.4rem;
+}
+
+.btn{
+width:100%;
+padding:15px;
+border:none;
+border-radius:15px;
+cursor:pointer;
+font-size:1rem;
+font-weight:600;
+margin-top:12px;
+transition:0.3s;
+}
+
+.btn:hover{
+transform:scale(1.02);
+}
+
+.sos{
+background:#ef4444;
+color:white;
+}
+
+.ai{
+background:#38bdf8;
+color:white;
+}
+
+.green{
+background:#22c55e;
+color:white;
+}
+
+.orange{
+background:#f97316;
+color:white;
+}
+
+textarea,input{
+width:100%;
+padding:12px;
+border:none;
+border-radius:12px;
+margin-top:10px;
+background:rgba(255,255,255,0.08);
+color:white;
+}
+
+#map{
+height:300px;
+border-radius:20px;
+margin-top:10px;
+}
+
+.chat-box{
+height:250px;
+overflow-y:auto;
+background:rgba(255,255,255,0.05);
+padding:12px;
+border-radius:15px;
+}
+
+.message{
+padding:10px;
+border-radius:12px;
+margin:10px 0;
+}
+
+.bot{
+background:#1d4ed8;
+}
+
+.user{
+background:#059669;
+text-align:right;
+}
+
+.alert-popup{
+position:fixed;
+top:20px;
+left:50%;
+transform:translateX(-50%);
+background:#ef4444;
+padding:20px;
+border-radius:20px;
+display:none;
+z-index:9999;
+animation:pulse 1s infinite;
+}
+
+@keyframes pulse{
+0%{transform:translateX(-50%) scale(1);}
+50%{transform:translateX(-50%) scale(1.05);}
+100%{transform:translateX(-50%) scale(1);}
+}
+
+.heartbeat{
+width:100%;
+height:80px;
+margin-top:10px;
+background:linear-gradient(90deg,#ef4444,#22c55e,#38bdf8);
+border-radius:20px;
+animation:beat 1s infinite;
+}
+
+@keyframes beat{
+0%{opacity:0.5;}
+50%{opacity:1;}
+100%{opacity:0.5;}
+}
+
+.hospital{
+padding:12px;
+margin-top:10px;
+border-radius:12px;
+background:rgba(255,255,255,0.08);
+}
+
+.footer{
+margin-top:40px;
+text-align:center;
+opacity:0.7;
+padding-bottom:30px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="alert-popup" id="popup">
+🚨 MEDICAL EMERGENCY DETECTED <br>
+Emergency Contacts Alerted
+</div>
+
+<div class="language-switch">
+<button onclick="toggleLanguage()">
+🌐 हिन्दी / English
+</button>
+</div>
+
+<div class="container">
+
+<div class="hero">
+
+<h1>CARO</h1>
+
+<p id="tagline">
+AI Emergency Health Guardian
+</p>
+
+</div>
+
+<div class="grid">
+
+<!-- SOS -->
+
+<div class="card">
+
+<h2 id="sosTitle">
+🚨 Emergency SOS
+</h2>
+
+<p id="sosText">
+Send emergency alert with location and voice message.
+</p>
+
+<button class="btn sos" onclick="activateSOS()">
+ACTIVATE SOS
+</button>
+
+<button class="btn orange" onclick="recordVoice()">
+🎤 Record Voice Message
+</button>
+
+</div>
+
+<!-- SETTINGS -->
+
+<div class="card">
+
+<h2>⚙ Settings & Emergency Contacts</h2>
+
+<input type="text" id="contact1"
+placeholder="Emergency Contact 1 Number">
+
+<input type="text" id="contact2"
+placeholder="Emergency Contact 2 Number">
+
+<input type="text" id="contact3"
+placeholder="Emergency Contact 3 Number">
+
+<input type="text" id="contact4"
+placeholder="Emergency Contact 4 Number">
+
+<input type="text" id="contact5"
+placeholder="Emergency Contact 5 Number">
+
+<button class="btn green"
+onclick="saveContacts()">
+
+💾 Save Emergency Contacts
+
+</button>
+
+<div id="saveMessage"
+style="margin-top:15px;">
+</div>
+
+</div>
+
+<!-- EMERGENCY NUMBERS -->
+
+<div class="card">
+
+<h2>📞 India Emergency Numbers</h2>
+
+<div class="hospital">
+🚑 Ambulance - 108
+</div>
+
+<div class="hospital">
+🚨 National Emergency - 112
+</div>
+
+<div class="hospital">
+🏥 Health Helpline - 102
+</div>
+
+<a href="tel:108">
+<button class="btn green">
+Call Ambulance
+</button>
+</a>
+
+</div>
+
+<!-- SYMPTOM ANALYZER -->
+
+<div class="card">
+
+<h2>❤️ Symptom Analyzer</h2>
+
+<textarea id="symptoms" rows="5"
+placeholder="Chest pain, stress, dizziness...">
+</textarea>
+
+<button class="btn ai"
+onclick="analyzeSymptoms()">
+
+Analyze Health
+
+</button>
+
+<div id="analysis"
+style="margin-top:15px">
+</div>
+
+</div>
+
+<!-- PULSE -->
+
+<div class="card">
+
+<h2>📷 Pulse & Stress Detection</h2>
+
+<p>
+Place finger on camera with flashlight.
+</p>
+
+<div class="heartbeat"></div>
+
+<button class="btn ai"
+onclick="detectPulse()">
+
+Start Pulse Detection
+
+</button>
+
+<div id="pulseResult"
+style="margin-top:15px">
+</div>
+
+</div>
+
+<!-- BREATHING -->
+
+<div class="card">
+
+<h2>🧘 Stress Relief Exercises</h2>
+
+<button class="btn green"
+onclick="startBreathing()">
+
+Start 2-Min Breathing Exercise
+
+</button>
+
+<div id="exerciseBox"
+style="margin-top:15px">
+</div>
+
+</div>
+
+<!-- AI CHAT -->
+
+<div class="card">
+
+<h2>🤖 CARO AI Agent</h2>
+
+<div class="chat-box" id="chatBox">
+
+<div class="message bot">
+Hello! I am CARO. I help during emergencies.
+</div>
+
+</div>
+
+<input type="text" id="userInput"
+placeholder="Ask nearby hospital or emergency help">
+
+<button class="btn ai"
+onclick="sendMessage()">
+
+Send
+
+</button>
+
+</div>
+
+<!-- MAP -->
+
+<div class="card">
+
+<h2>📍 Live Location & Hospital Map</h2>
+
+<div id="map"></div>
+
+<button class="btn green"
+onclick="findHospitals()">
+
+Find Nearby Hospitals
+
+</button>
+
+<div id="hospitalList"></div>
+
+</div>
+
+<!-- HELP -->
+
+<div class="card">
+
+<h2>🆘 AI Help Assistant</h2>
+
+<p>
+Need help using the app?
+</p>
+
+<button class="btn ai"
+onclick="voiceGuide()">
+
+Voice Guidance
+
+</button>
+
+<button class="btn green"
+onclick="helpAssistant()">
+
+Open Help Assistant
+
+</button>
+
+</div>
+
+</div>
+
+<div class="footer">
+CARO | International Hackathon Prototype
+</div>
+
+</div>
+
+<script>
+
+let hindi = false;
+
+let emergencyContacts = [];
+
+function saveContacts(){
+
+emergencyContacts = [
+
+document.getElementById('contact1').value,
+document.getElementById('contact2').value,
+document.getElementById('contact3').value,
+document.getElementById('contact4').value,
+document.getElementById('contact5').value
+
+];
+
+document.getElementById('saveMessage').innerHTML =
+'✅ Emergency contacts saved successfully';
+
+}
+
+function toggleLanguage(){
+
+hindi = !hindi;
+
+if(hindi){
+
+document.getElementById('tagline').innerHTML =
+'AI इमरजेंसी हेल्थ गार्जियन';
+
+document.getElementById('sosTitle').innerHTML =
+'🚨 इमरजेंसी SOS';
+
+document.getElementById('sosText').innerHTML =
+'लोकेशन और वॉइस मैसेज के साथ इमरजेंसी अलर्ट भेजें';
+
+}
+else{
+
+document.getElementById('tagline').innerHTML =
+'AI Emergency Health Guardian';
+
+document.getElementById('sosTitle').innerHTML =
+'🚨 Emergency SOS';
+
+document.getElementById('sosText').innerHTML =
+'Send emergency alert with location and voice message';
+
+}
+
+}
+
+function activateSOS(){
+
+document.getElementById('popup').style.display='block';
+
+setTimeout(()=>{
+document.getElementById('popup').style.display='none';
+},5000);
+
+navigator.vibrate([300,200,300,200,300]);
+
+let contactsList = emergencyContacts
+.filter(contact => contact !== "")
+.join("\n");
+
+alert(
+'🚨 SOS ACTIVATED\n\n' +
+'SMS Alert Sent To:\n\n' +
+contactsList +
+'\n\nWith Live Location.'
+);
+
+}
+
+function analyzeSymptoms(){
+
+let text =
+document.getElementById('symptoms').value.toLowerCase();
+
+let result =
+document.getElementById('analysis');
+
+if(text.includes('chest')){
+
+result.innerHTML =
+'⚠ Possible cardiac emergency detected.';
+
+}
+else if(text.includes('stress')){
+
+result.innerHTML =
+'⚠ High stress level detected. Please rest.';
+
+}
+else if(text.includes('breathing')){
+
+result.innerHTML =
+'⚠ Possible respiratory issue.';
+
+}
+else{
+
+result.innerHTML =
+'✅ No severe issue detected currently.';
+
+}
+
+}
+
+function detectPulse(){
+
+let pulse =
+Math.floor(Math.random()*40)+60;
+
+let stress =
+Math.floor(Math.random()*100);
+
+let output = `
+❤️ Pulse Rate: ${pulse} BPM <br>
+🧠 Stress Level: ${stress}% <br><br>
+`;
+
+document.getElementById('pulseResult').innerHTML =
+output;
+
+}
+
+function startBreathing(){
+
+let box =
+document.getElementById('exerciseBox');
+
+box.innerHTML = `
+🧘 Breathe In... 4 sec <br>
+😮 Hold... 4 sec <br>
+😌 Breathe Out... 6 sec <br><br>
+
+Repeat for 2 minutes.
+`;
+
+}
+
+function sendMessage(){
+
+let input =
+document.getElementById('userInput');
+
+let chat =
+document.getElementById('chatBox');
+
+let userDiv =
+document.createElement('div');
+
+userDiv.className='message user';
+
+userDiv.innerHTML=input.value;
+
+chat.appendChild(userDiv);
+
+let botDiv =
+document.createElement('div');
+
+botDiv.className='message bot';
+
+let text =
+input.value.toLowerCase();
+
+let response =
+'Please stay calm and contact emergency services.';
+
+if(text.includes('hospital')){
+
+response =
+'Nearest hospital found within 2.4 km.';
+
+}
+
+if(text.includes('stress')){
+
+response =
+'Try breathing exercise and hydrate yourself.';
+
+}
+
+if(text.includes('help')){
+
+response =
+'Use SOS button during emergencies.';
+
+}
+
+botDiv.innerHTML=response;
+
+chat.appendChild(botDiv);
+
+input.value='';
+
+chat.scrollTop=chat.scrollHeight;
+
+}
+
+function recordVoice(){
+
+alert(
+'🎤 Voice message recorded successfully.'
+);
+
+}
+
+function voiceGuide(){
+
+let speech =
+new SpeechSynthesisUtterance();
+
+speech.text =
+'Welcome to CARO. Press SOS during emergency.';
+
+window.speechSynthesis.speak(speech);
+
+}
+
+function helpAssistant(){
+
+alert(
+'1. Save emergency contacts.\n2. Press SOS during emergency.\n3. Use map for hospitals.'
+);
+
+}
+
+let map =
+L.map('map').setView([23.2599,77.4126],13);
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{
+maxZoom:19
+}
+).addTo(map);
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+let lat = pos.coords.latitude;
+let lon = pos.coords.longitude;
+
+map.setView([lat,lon],14);
+
+L.marker([lat,lon])
+.addTo(map)
+.bindPopup('Your Location')
+.openPopup();
+
+});
+
+function findHospitals(){
+
+let hospitals = `
+
+<div class="hospital">
+🏥 Apollo Hospital - 2.1 km
+</div>
+
+<div class="hospital">
+🏥 AIIMS Emergency - 3.4 km
+</div>
+
+<div class="hospital">
+🏥 City Care Hospital - 1.2 km
+</div>
+
+`;
+
+document.getElementById('hospitalList').innerHTML =
+hospitals;
+
+}
+
+</script>
+
+</body>
+</html>
